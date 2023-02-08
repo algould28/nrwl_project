@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-no-useless-fragment */
 import { Ticket } from '@acme/shared-models';
 import { AddCircle } from '@mui/icons-material';
 import {
@@ -10,7 +11,7 @@ import {
   TextField,
 } from '@mui/material';
 import { Box } from '@mui/system';
-import { getAssignedUser } from 'client/src/globalFunctions';
+import { getAssignedUser } from '../../../globalFunctions';
 import { useEffect, useState } from 'react';
 import { DEFAULT_SPACING } from '../../constants';
 import { useTicketsState } from '../../state/ticketsState';
@@ -30,16 +31,23 @@ export function Tickets() {
     tickets,
     toggleTicketCompletionIsLoading,
     createTicketIsLoading,
+    getAllTicketsError,
+    getTicketsIsLoading,
     createTicket,
     getAllTickets,
   } = useTicketsState();
+
   const { users } = useUsersState();
 
   const [showTicketInput, setShowTicketInput] = useState(false);
+  const [filteredTickets, setFilteredTickets] = useState<Ticket[] | undefined>(
+    tickets
+  );
   const [completedTickets, setCompletedTickets] = useState<Ticket[]>([]);
   const [uncompletedTickets, setUncompletedTickets] = useState<Ticket[]>([]);
   const [createTicketDescription, setCreateTicketDescription] = useState('');
   const [showCompletedTickets, setShowCompletedTickets] = useState(false);
+  const [ticketSearchQuery, setTicketSearchQuery] = useState('');
   const [showUncompletedTickets, setShowUncompletedTickets] = useState(true);
 
   const handleCreateTicket = () => {
@@ -50,27 +58,48 @@ export function Tickets() {
   const handleCompletedCheckboxClick = () => {
     setShowCompletedTickets(!showCompletedTickets);
   };
+
   const handleUncompletedCheckboxClick = () => {
     setShowUncompletedTickets(!showUncompletedTickets);
   };
 
   useEffect(() => {
+    setFilteredTickets(tickets);
+  }, [tickets]);
+
+  useEffect(() => {
     if (!toggleTicketCompletionIsLoading && !createTicketIsLoading) {
       setCompletedTickets(
-        tickets != null ? tickets.filter((ticket) => ticket.completed) : []
+        filteredTickets != null
+          ? filteredTickets.filter((ticket) => ticket.completed)
+          : []
       );
       setUncompletedTickets(
-        tickets != null ? tickets.filter((ticket) => !ticket.completed) : []
+        filteredTickets != null
+          ? filteredTickets.filter((ticket) => !ticket.completed)
+          : []
       );
     }
-  }, [tickets, toggleTicketCompletionIsLoading, createTicketIsLoading]);
+  }, [filteredTickets, toggleTicketCompletionIsLoading, createTicketIsLoading]);
+
+  useEffect(() => {
+    if (tickets != null && ticketSearchQuery !== '') {
+      setFilteredTickets(
+        tickets.filter((ticket) =>
+          ticket.description.includes(ticketSearchQuery)
+        )
+      );
+    } else if (ticketSearchQuery === '') {
+      setFilteredTickets(tickets);
+    }
+  }, [ticketSearchQuery, tickets]);
 
   useEffect(() => {
     getAllTickets();
   }, []);
 
   return (
-    <div style={{ width: '40vw' }}>
+    <div style={{ width: '100%' }}>
       <div
         style={{
           display: 'flex',
@@ -168,67 +197,96 @@ export function Tickets() {
           label="Not Completed"
           sx={{ marginLeft: DEFAULT_SPACING }}
         />
+        <TextField
+          id="ticket-search-input"
+          label="Search Tickets"
+          variant="outlined"
+          placeholder=""
+          minRows={4}
+          sx={{ width: '20vw' }}
+          value={ticketSearchQuery}
+          onChange={(event) => {
+            setTicketSearchQuery(event.target.value);
+          }}
+        />
       </div>
       <DefaultSpacer />
       <div style={{ padding: '0 0.5rem' }}>
-        {tickets != null && users != null ? (
+        {/* Everything is fine, tickets aren't loading, no error */}
+        {tickets != null && users != null && (
           <>
-            {!showCompletedTickets && !showUncompletedTickets && (
+            {!getAllTicketsError && !getTicketsIsLoading && (
+              <>
+                {!showCompletedTickets && !showUncompletedTickets && (
+                  <CardDescriptionText
+                    color={theme.colors.warning}
+                    text="You should probably select at least one filter..."
+                  />
+                )}
+                {showUncompletedTickets && (
+                  <>
+                    <SectionHeaderText
+                      text="Not Completed"
+                      color={theme.colors.text}
+                    />
+                    <HalfSpacer />
+                    {uncompletedTickets.map((ticket) => (
+                      <TicketCard
+                        key={`${ticket.id}-${ticket.description}`}
+                        ticket={ticket}
+                        user={getAssignedUser(ticket, users)}
+                        isDetailsCard={false}
+                      />
+                    ))}
+                    {uncompletedTickets.length === 0 && (
+                      <CardDescriptionText
+                        color={theme.colors.text}
+                        text="Your taskboard is empty! Great Job!"
+                      />
+                    )}
+                  </>
+                )}
+
+                {showCompletedTickets && showUncompletedTickets && (
+                  <DefaultSpacer />
+                )}
+
+                {showCompletedTickets && (
+                  <>
+                    <SectionHeaderText
+                      text="Completed"
+                      color={theme.colors.text}
+                    />
+                    <HalfSpacer />
+                    {completedTickets.map((ticket) => (
+                      <TicketCard
+                        key={`${ticket.id}-${ticket.description}`}
+                        ticket={ticket}
+                        user={getAssignedUser(ticket, users)}
+                        isDetailsCard={false}
+                      />
+                    ))}
+                    {completedTickets.length === 0 && (
+                      <CardDescriptionText
+                        color={theme.colors.text}
+                        text="You've completed zero tickets... Lets up that productivity!"
+                      />
+                    )}
+                  </>
+                )}
+              </>
+            )}
+            {/* tickets api is loading */}
+            {!getAllTicketsError && getTicketsIsLoading && <TicketsLoader />}
+            {getAllTicketsError && !getTicketsIsLoading && (
               <CardDescriptionText
                 color={theme.colors.warning}
-                text="You should probably select at least one filter..."
+                text="We're sorry, there was a problem with the tickets API please try again."
               />
             )}
-            {showUncompletedTickets && (
-              <>
-                <SectionHeaderText
-                  text="Not Completed"
-                  color={theme.colors.text}
-                />
-                <HalfSpacer />
-                {uncompletedTickets.map((ticket) => (
-                  <TicketCard
-                    key={`${ticket.id}-${ticket.description}`}
-                    ticket={ticket}
-                    user={getAssignedUser(ticket, users)}
-                    isDetailsCard={false}
-                  />
-                ))}
-                {uncompletedTickets.length === 0 && (
-                  <CardDescriptionText
-                    color={theme.colors.text}
-                    text="Your taskboard is emtpy! Great Job!"
-                  />
-                )}
-              </>
-            )}
-
-            {showCompletedTickets && showUncompletedTickets && (
-              <DefaultSpacer />
-            )}
-
-            {showCompletedTickets && (
-              <>
-                <SectionHeaderText text="Completed" color={theme.colors.text} />
-                <HalfSpacer />
-                {completedTickets.map((ticket) => (
-                  <TicketCard
-                    key={`${ticket.id}-${ticket.description}`}
-                    ticket={ticket}
-                    user={getAssignedUser(ticket, users)}
-                    isDetailsCard={false}
-                  />
-                ))}
-                {completedTickets.length === 0 && (
-                  <CardDescriptionText
-                    color={theme.colors.text}
-                    text="You've completed zero tickets... Lets up that productivity!"
-                  />
-                )}
-              </>
-            )}
           </>
-        ) : (
+        )}
+        {(tickets == null || users == null || getTicketsIsLoading) && (
           <TicketsLoader />
         )}
       </div>

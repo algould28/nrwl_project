@@ -7,6 +7,7 @@ import {
   Switch,
 } from '@mui/material';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DEFAULT_SPACING, UNASSIGNED_USER } from '../../constants';
 import { useTicketsState } from '../../state/ticketsState';
 import { useUsersState } from '../../state/usersState';
@@ -25,6 +26,7 @@ export interface TicketCardProps {
 export function TicketCard(props: TicketCardProps) {
   const ticket = props.ticket;
   const { users } = useUsersState();
+  const navigate = useNavigate();
 
   const [isCompleted, setIsCompleted] = useState(ticket.completed);
   const [assignedUser, setAssignedUser] = useState<User>(
@@ -59,7 +61,7 @@ export function TicketCard(props: TicketCardProps) {
 
   const handleCardClick = () => {
     if (!props.isDetailsCard) {
-      window.location.href = `${ticket.id}`;
+      navigate(`/${ticket.id}`);
     }
   };
 

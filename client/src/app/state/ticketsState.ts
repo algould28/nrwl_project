@@ -4,6 +4,7 @@ import { create } from 'zustand';
 export interface TicketsState {
   tickets: Ticket[] | undefined;
   getTicketsIsLoading: boolean;
+  getAllTicketsError: boolean;
   getTicketByIdIsLoading: boolean;
   createTicketIsLoading: boolean;
   toggleTicketCompletionIsLoading: boolean;
@@ -21,19 +22,24 @@ export interface TicketsState {
 export const useTicketsState = create<TicketsState>((set: any, get: any) => ({
   tickets: undefined,
   getTicketsIsLoading: false,
+  getAllTicketsError: false,
   getTicketByIdIsLoading: false,
   createTicketIsLoading: false,
   toggleTicketCompletionIsLoading: false,
   assignUserToTicketIsLoading: false,
 
   getAllTickets: async () => {
-    set({ getTicketsIsLoading: true, tickets: undefined });
+    set({
+      getTicketsIsLoading: true,
+      tickets: undefined,
+      getAllTicketsError: false,
+    });
     const ticketsResponse = await fetch('/api/tickets');
 
     if (ticketsResponse.ok) {
-      set({ tickets: await ticketsResponse.json() });
+      set({ tickets: await ticketsResponse.json(), getAllTicketsError: false });
     } else {
-      set({ tickets: [] });
+      set({ tickets: [], getAllTicketsError: true });
     }
     set({ getTicketsIsLoading: false });
   },
@@ -61,7 +67,7 @@ export const useTicketsState = create<TicketsState>((set: any, get: any) => ({
     const responseJSON = await createTicketResponse.json();
 
     if (responseJSON?.id != null) {
-      let tickets = get().tickets;
+      const tickets = get().tickets;
       tickets.push(responseJSON);
       set({ tickets });
     }
@@ -79,7 +85,7 @@ export const useTicketsState = create<TicketsState>((set: any, get: any) => ({
     );
 
     if (markTicketAsCompleteResponse.ok) {
-      let tickets: Ticket[] = get().tickets;
+      const tickets: Ticket[] = get().tickets;
 
       const completedTicketIndex = tickets.findIndex(
         (ticket) => ticket.id === ticketId
@@ -107,7 +113,7 @@ export const useTicketsState = create<TicketsState>((set: any, get: any) => ({
     );
 
     if (markTicketAsNotCompleteResponse.ok) {
-      let tickets: Ticket[] = get().tickets;
+      const tickets: Ticket[] = get().tickets;
 
       const notCompletedTicketIndex = tickets.findIndex(
         (ticket) => ticket.id === ticketId
@@ -141,7 +147,7 @@ export const useTicketsState = create<TicketsState>((set: any, get: any) => ({
     });
 
     if (assignUserToTicketResponse.ok) {
-      let tickets: Ticket[] = get().tickets;
+      const tickets: Ticket[] = get().tickets;
 
       const assignedTicketIndex = tickets.findIndex(
         (ticket) => ticket.id === ticketId
